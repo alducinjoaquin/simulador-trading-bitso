@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import ta as ta
+import ta
 import plotly.graph_objects as go
 from datetime import datetime
 
@@ -20,7 +20,7 @@ if "pnl_diario" not in st.session_state:
 # ==========================================
 st.sidebar.header("⚙️ Parámetros de Trading")
 
-# Seleccionar Monedas (Punto 1)
+# Seleccionar Monedas
 monedas_opciones = {
     "Bitcoin (BTC)": "BTC-USD",
     "Ethereum (ETH)": "ETH-USD",
@@ -33,14 +33,14 @@ monedas_seleccionadas = st.sidebar.multiselect(
     default=["Bitcoin (BTC)", "Ethereum (ETH)", "Solana (SOL)"]
 )
 
-# Tamaño del Trade (Punto 2)
+# Tamaño del Trade
 monto_trade = st.sidebar.number_input("Tamaño del Trade ($ USD):", min_value=10.0, value=100.0, step=10.0)
 
-# Modo de Operación (Punto 5)
+# Modo de Operación
 modo_automatico = st.sidebar.toggle("🤖 Modo Automático", value=False)
 st.sidebar.caption(f"Modo actual: {'**AUTOMÁTICO**' if modo_automatico else '**MANUAL**'}")
 
-# Configuración de Bracket (Punto 6)
+# Configuración de Bracket
 st.sidebar.subheader("🎯 Configuración Bracket")
 pct_tp = st.sidebar.number_input("Take Profit (%)", min_value=0.1, value=2.0, step=0.1) / 100
 pct_sl = st.sidebar.number_input("Stop Loss (%)", min_value=0.1, value=1.0, step=0.1) / 100
@@ -49,7 +49,7 @@ pct_sl = st.sidebar.number_input("Stop Loss (%)", min_value=0.1, value=1.0, step
 # 2. FUNCIONES DE PROCESAMIENTO Y ANÁLISIS
 # ==========================================
 def obtener_y_analizar_datos(ticker):
-    # Cargar datos de 5 minutos (Punto 4)
+    # Cargar datos de 5 minutos
     df = yf.download(ticker, period="5d", interval="5m", progress=False)
     if df.empty:
         return None, False, 0.0, {}
@@ -59,17 +59,16 @@ def obtener_y_analizar_datos(ticker):
         df.columns = df.columns.get_level_values(0)
 
     # 1. RSI 14
-df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
-
-# 2. MACD (12, 26, 9)
-macd_obj = ta.trend.MACD(df['Close'], window_slow=26, window_fast=12, window_sign=9)
-df['MACD'] = macd_obj.macd()
-df['MACD_SIGNAL'] = macd_obj.macd_signal()
-
-# 3. Bandas de Bollinger (20, 2)
-bollinger_obj = ta.volatility.BollingerBands(df['Close'], window=20, window_dev=2)
-df['BBL'] = bollinger_obj.bollinger_lband()
-
+    df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
+    
+    # 2. MACD (12, 26, 9)
+    macd_obj = ta.trend.MACD(df['Close'], window_slow=26, window_fast=12, window_sign=9)
+    df['MACD'] = macd_obj.macd()
+    df['MACD_SIGNAL'] = macd_obj.macd_signal()
+    
+    # 3. Bandas de Bollinger (20, 2)
+    bollinger_obj = ta.volatility.BollingerBands(df['Close'], window=20, window_dev=2)
+    df['BBL'] = bollinger_obj.bollinger_lband()
 
     # Evaluar condiciones en la última vela cerrada (-1) y la previa (-2)
     rsi_val = df['RSI'].iloc[-1]
@@ -77,10 +76,10 @@ df['BBL'] = bollinger_obj.bollinger_lband()
     # Regla 1: RSI <= 27
     cond_rsi = rsi_val <= 27
     
-    # Regla 2: MACD cruza hacia arriba la Signal Line (Media Móvil Exponencial de 9)
+    # Regla 2: MACD cruza hacia arriba la Signal Line
     cond_macd = (df['MACD'].iloc[-2] < df['MACD_SIGNAL'].iloc[-2]) and (df['MACD'].iloc[-1] > df['MACD_SIGNAL'].iloc[-1])
     
-    # Regla 3: Toca/Rompe debajo de Bollinger Inferior y la supera hacia arriba posteriormente
+    # Regla 3: Toca/Rompe debajo de Bollinger Inferior y la supera hacia arriba
     cond_bb = (df['Close'].iloc[-2] < df['BBL'].iloc[-2]) and (df['Close'].iloc[-1] > df['BBL'].iloc[-1])
 
     # Regla 2 de 3 Indicadores
@@ -140,11 +139,10 @@ else:
                 st.write(f"**Bollinger Rebote:** {'✅' if metricas['BB Rebote'][1] else '❌'}")
                 st.caption(f"Indicadores cumplidos: **{metricas['Conteo']}/3**")
                 
-                # Evaluación de Entradas (Puntos 5 y 6)
+                # Evaluación de Entradas
                 if señal_disparada:
                     st.success("🚨 ¡SEÑAL DE ENTRADA DETECTADA!")
                     if modo_automatico:
-                        # Verificar si ya hay una orden abierta reciente para evitar duplicados masivos
                         ordenes_abiertas = [o for o in st.session_state.libro_ordenes if o['Moneda'] == nombre_moneda and o['Estado'] == 'ABIERTA']
                         if not ordenes_abiertas:
                             ejecutar_compra(nombre_moneda, precio_actual)
@@ -169,7 +167,7 @@ else:
                             st.session_state.pnl_diario += orden['P&L USD']
 
 # ==========================================
-# 4. LIBRO DE EJECUCIONES Y P&L (Punto 7)
+# 4. LIBRO DE EJECUCIONES Y P&L
 # ==========================================
 st.divider()
 st.header("📋 Libro de Ejecuciones y P&L Diario")

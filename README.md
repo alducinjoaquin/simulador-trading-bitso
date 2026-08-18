@@ -1,2 +1,5 @@
-# simulador-trading-bitso
-Simulador de trading
+streamlit
+yfinance
+pandas
+pandas-ta
+plotly

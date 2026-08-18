@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import pandas_ta as ta
+import ta as ta
 import plotly.graph_objects as go
 from datetime import datetime
 
@@ -59,16 +59,17 @@ def obtener_y_analizar_datos(ticker):
         df.columns = df.columns.get_level_values(0)
 
     # 1. RSI 14
-    df['RSI'] = ta.rsi(df['Close'], length=14)
-    
-    # 2. MACD (12, 26, 9)
-    macd_df = ta.macd(df['Close'], fast=12, slow=26, signal=9)
-    df['MACD'] = macd_df['MACD_12_26_9']
-    df['MACD_SIGNAL'] = macd_df['MACDS_12_26_9']
-    
-    # 3. Bandas de Bollinger (20, 2)
-    bb_df = ta.bbands(df['Close'], length=20, std=2)
-    df['BBL'] = bb_df['BBL_20_2.0']  # Banda Inferior
+df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
+
+# 2. MACD (12, 26, 9)
+macd_obj = ta.trend.MACD(df['Close'], window_slow=26, window_fast=12, window_sign=9)
+df['MACD'] = macd_obj.macd()
+df['MACD_SIGNAL'] = macd_obj.macd_signal()
+
+# 3. Bandas de Bollinger (20, 2)
+bollinger_obj = ta.volatility.BollingerBands(df['Close'], window=20, window_dev=2)
+df['BBL'] = bollinger_obj.bollinger_lband()
+
 
     # Evaluar condiciones en la última vela cerrada (-1) y la previa (-2)
     rsi_val = df['RSI'].iloc[-1]

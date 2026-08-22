@@ -69,6 +69,8 @@ def obtener_y_analizar_datos(ticker):
     # 3. Bandas de Bollinger (20, 2)
     bollinger_obj = ta.volatility.BollingerBands(df['Close'], window=20, window_dev=2)
     df['BBL'] = bollinger_obj.bollinger_lband()
+    df['BBM'] = bollinger_obj.bollinger_mavg()
+    df['BBH'] = bollinger_obj.bollinger_hband()
 
     # Evaluar condiciones en la última vela cerrada (-1) y la previa (-2)
     rsi_val = df['RSI'].iloc[-1]
@@ -114,6 +116,24 @@ def ejecutar_compra(moneda, precio_entrada):
     }
     st.session_state.libro_ordenes.append(nueva_orden)
 
+def construir_grafico_velas(df, nombre_moneda):
+    fig = go.Figure()
+    fig.add_trace(go.Candlestick(
+        x=df.index,
+        open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
+        name=nombre_moneda
+    ))
+    fig.add_trace(go.Scatter(x=df.index, y=df['BBH'], line=dict(color='rgba(150,150,150,0.5)', width=1), name='BB Superior'))
+    fig.add_trace(go.Scatter(x=df.index, y=df['BBM'], line=dict(color='rgba(100,100,255,0.5)', width=1), name='BB Media'))
+    fig.add_trace(go.Scatter(x=df.index, y=df['BBL'], line=dict(color='rgba(150,150,150,0.5)', width=1), name='BB Inferior'))
+    fig.update_layout(
+        height=350,
+        margin=dict(l=10, r=10, t=30, b=10),
+        xaxis_rangeslider_visible=False,
+        showlegend=False
+    )
+    return fig
+
 # ==========================================
 # 3. MONITOREO EN TIEMPO REAL Y PANTALLA
 # ==========================================
@@ -138,7 +158,10 @@ else:
                 st.write(f"**MACD Cruce Alcista:** {'✅' if metricas['MACD Cross'][1] else '❌'}")
                 st.write(f"**Bollinger Rebote:** {'✅' if metricas['BB Rebote'][1] else '❌'}")
                 st.caption(f"Indicadores cumplidos: **{metricas['Conteo']}/3**")
-                
+
+                # Gráfico de velas con Bandas de Bollinger
+                st.plotly_chart(construir_grafico_velas(df, nombre_moneda), use_container_width=True, key=f"chart_{ticker}")
+
                 # Evaluación de Entradas
                 if señal_disparada:
                     st.success("🚨 ¡SEÑAL DE ENTRADA DETECTADA!")
